@@ -1,0 +1,70 @@
+name: itrue-zfs
+base: core26
+adopt-info: zfs
+summary: ZFS utilities
+description: |
+  ZFS stuff.
+
+grade: devel
+confinement: strict
+
+plugs:
+  load-zfs:
+    interface: kernel-module-load
+    modules:
+      - name: zfs
+        load: on-boot
+  block-devices:
+    allow-partitions: true
+
+parts:
+  zfs:
+    plugin: nil
+    stage-packages:
+      - lz4
+      - zfsutils-linux
+      - zfs-zed
+      - zstd
+    override-build: |
+      craftctl default
+      craftctl set version=$(dpkg-deb -f \
+        "${CRAFT_PART_BUILD}/../stage_packages/zfsutils-linux"*.deb Version)
+    stage:
+      - -usr/share/lintian
+      - -usr/share/man
+
+  import-wrapper:
+    plugin: dump
+    source: import
+    organize:
+      import-pools.sh: usr/bin/import-pools
+    override-build: |
+      craftctl default
+      chmod 0755 "${CRAFT_PART_INSTALL}/import-pools.sh"
+
+apps:
+  zfs:
+    command: usr/sbin/zfs
+    plugs:
+      - block-devices
+      - kernel-module-observe
+      - hardware-observe
+      - mount-observe
+
+  zpool:
+    command: usr/sbin/zpool
+    plugs:
+      - block-devices
+      - kernel-module-observe
+      - hardware-observe
+      - mount-observe
+
+  import:
+    command: usr/bin/import-pools
+    daemon: oneshot
+    install-mode: enable
+    plugs:
+      - block-devices
+      - kernel-module-observe
+      - hardware-observe
+      - mount-observe
